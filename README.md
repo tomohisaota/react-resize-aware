@@ -1,192 +1,76 @@
 # react-resize-aware
 
-A simple React.js component you can use to make any piece of UI aware of its size.
+It does one thing, it does it well: listens to resize events on any HTML element.
 
-Each time the component' size changes, your component will be notified by one of
-the methods described below.
-The size change can be detected by a window resize, a CSS media query,
-a CSS pseudo selector, a JavaScript action or really, anything.
+`react-resize-aware` is a zero dependency, **~400 bytes** React library you can use to detect resize events without relying on intervals, loops, DOM manipulation detection or CSS redraws.
 
-**This component doesn't rely on intervals, loops, DOM manipulation detection
-or any other weird stuff.  
-It takes advantage of the `resize` event of the `<object>` HTML element.**
+**It takes advantage of the `resize` event on the `HTMLObjectElement`, works on any browser I know of, and it's super lightweight.**
 
-You don't have to care about anything, it will always work as you expect in any
-possible scenario.  
-Also, it's just 2.6KB (or 1.2KB gzipped)! (no dependencies!)
-
-Install it with:
+## Installation
 
 ```
 yarn add react-resize-aware
-# or
+```
+
+or with npm:
+
+```
 npm install --save react-resize-aware
 ```
 
-# Usage
+## Usage
 
-> **note**: `ResizeAware` needs a position different from `initial` to work!  
-> Make sure to set it to `relative`, `absolute` or `fixed` using its `style` property or with CSS
-
-## Stateless approach
-
-If your component is stateless or you prefer to follow a functional approach
-you can use ResizeAware to wrap your existing component and it will take care
-to provide two property (`height` and `width`) that will get updated every time
-the component sizes change.
+The API is simple yet powerful, the `ResizeAware` component expects a function as `children` ([render-prop](https://reactjs.org/docs/render-props.html)):
 
 ```jsx
 import React from 'react';
 import ResizeAware from 'react-resize-aware';
 
-// This component will get re-rendered every time its width or height changes
-function MyComponent({width, height}) {
-  return <div>{width}x{height}</div>;
-}
-
-function App() {
-  return (
-    <ResizeAware style={{ position: 'relative' }}>
-      <MyComponent />
-    </ResizeAware>
-  );
-}
-```
-
-## Stateful approach
-
-If your component is stateful or you need to use ResizeAware in the middle of one
-of your components you can use the `onResize` property of the component to provide
-a callback that will be called on each resize of the ResizeAware component and will
-provide as first argument an object with `width` and `height` properties.
-
-```jsx
-import React, { Component } from 'react';
-import ResizeAware from 'react-resize-aware';
-
-function MyComponent({width, height}) {
-  return <div>{width}x{height}</div>;
-}
-
-class MyComponent extend Component {
-  handleResize = ({ width, height }) => console.log(width, height);
-  
-  render() {
-    return (
-      <div>
-        My app renders...
-        <ResizeAware
-          style={{ position: 'relative' }}
-          onlyEvent
-          onResize={this.handleResize}
-        >
-          <MyComponent />
-        </ResizeAware>
+const App = () => (
+  <ResizeAware>
+    {({ ResizeListener, sizes }) => (
+      <div style={{ position: 'relative' }}>
+        <ResizeListener />
+        Your content here. (div sizes are {sizes.width} x {sizes.height})
       </div>
-    );
-  }
-}
+    )}
+  </ResizeAware>
+);
 ```
 
-## Self containing
+> **Heads up!**: Make sure to assign a `position != initial` to the HTMLElement you want to target (`relative`, `absolute`, or `fixed` will work).
 
-If you need to keep your DOM structure clean and you don't want the additional
-`div` added by ResizeAware, you can use the component as base for your own one.
+## API
 
-```jsx
-import React from 'react';
-import ResizeAware from 'react-resize-aware';
+The render-prop provides an object containing two properties:
 
-// This component will get re-rendered every time its width or height changes
-// It must expose a `getRef` property and must allow its `children` to be rendered
-// as direct descendant
-// The `getRef` property must be assigned to the `ref` property of the main element
-function MyComponent({width, height, getRef, children}) {
-  return (
-    <div ref={getRef} style={{ position: 'relative' }}>
-      <span>{width}x{height}</span>
-      {children}
-    </div>
-  );
-}
+### `ResizeListener`
 
-function App() {
-  return (
-    <ResizeAware component={MyComponent} />
-  );
-}
-```
+This is an invisible component that must be placed as direct-child of the HTMLElement you want to listen the resize events of.
 
-## Child function
+The component is not going to interfer with your layouts so don't worry.
 
-Whenever you want to manipulate the `width` and `height` properties before they
-get passed down to the child component, you can define a function as child of ResizeAware:
+### `sizes`
+
+This object contains the `width` and `height` properties, these properties are going to be `null` before the component rendered, and will return a `number` after the component rendered.
+
+## Custom `reporter`
+
+You can customize the properties of the `sizes` object by assigning a custom `reporter` property to the `ResizeAware` component.
 
 ```jsx
-import React from 'react';
-import ResizeAware from 'react-resize-aware';
-
-export default makeResizeAware(function MyComponent({width, height, getRef, children})) {
-  return (
-    <ResizeAware style={{ position: 'relative' }}>
-      {({ width, height }) =>
-        <div style={{ width: width / 2, height: height / 2 }} />}
-    </ResizeAware>
-  );
+const customReporter = element => ({
+  clientWidth: target != null ? target.clientWidth : null,
 })
-```
 
-## Decorator/enhancer
-
-In case you prefer to directly decorate your component to add to it the ResizeAware
-functionalities, you can do as follow:
-
-```jsx
-import React from 'react';
-import { makeResizeAware } from 'react-resize-aware';
-
-export default makeResizeAware(function MyComponent({width, height, getRef, children})) {
-  return (
-    <div ref={getRef} style={{ position: 'relative' }}>
-      <span>{width}x{height}</span>
-      {children}
-    </div>
-  );
-})
-```
-
-Or, with ES7 decorators:
-
-```jsx
-import React from 'react';
-import { makeResizeAware } from 'react-resize-aware';
-
-@makeResizeAware
-export default class MyComponent extends React.Component {
-  render() {
-    const {width, height, getRef, children} = this.props;
-    return (
-      <div ref={getRef} style={{ position: 'relative' }}>
-        <span>{width}x{height}</span>
-        {children}
+<ResizeAware reporter={customReporter}>
+  {({ ResizeListener, sizes }) => (
+      <div style={{ position: 'relative' }}>
+          <ResizeListener />
+          clientWidth = {sizes.clientWidth}
       </div>
-    );
-  }
-}
+  )}
+</ResizeAware>
 ```
 
-
-## Properties
-
-- The `onlyEvent` property will prevent ResizeAware from passing the `height` and `width`
-properties to its child component, in case you don't want to rely on them.
-- The `component` property allows to define the HTML tag used by ResizeAware to render, or any React component.
-- The `onResize` property is an optional callback called on each resize with as first
-  argument an object containing `height` and `width` properties.
-- `widthPropName` and `heightPropName`, set them to change the name of the properties passed to the
-  child component, in place of the default `width` and `height` names.
-
-# License
-
-MIT License
-Copyright 2016+, Federico Zivolo
+The above example will report the `clientWidth` rather than the default `offsetWidth` and `offsetHeight`.
